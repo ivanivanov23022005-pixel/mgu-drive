@@ -7,8 +7,9 @@
 const mgu = require('./kit/mgu');
 const G = require('./kit/gauges');
 const Car = require('./kit/car');
-const { startHud } = require('./drive_hud');
+const { startHud, startCluster } = require('./drive_hud');
 const { STYLES, drawProjection } = require('./proj');
+const { STYLES: CLUSTERS, drawCluster } = require('./cluster');
 const radar = require('./radar');
 const { startGps } = require('./gps');
 
@@ -137,10 +138,14 @@ mgu.run({
                 size: 120,
                 sub: rpm === null ? '' : rpm + ' rpm',
             });
-            G.button(cv, t, 48, 268, 280, 56, 'Projection', () => {
+            G.button(cv, t, 48, 268, 220, 56, 'Projection', () => {
                 page = 1;
                 return render();
             }, { key: 'open-proj', primary: true });
+            G.button(cv, t, 284, 268, 220, 56, 'Cluster', () => {
+                page = 3;
+                return render();
+            }, { key: 'open-cluster' });
             cv.text(look(d).name, 48, 348, 22, t.dim, { font: 'bold', spacing: 1 });
             cv.text(hud.status(), 48, 378, 16, t.dim, { font: 'label' });
 
@@ -178,7 +183,7 @@ mgu.run({
             cv.text(clock(moveMs), 1320, 430, 42, t.text, { font: 'num' });
             cv.text(avg === null ? '--' : Math.round(avg) + ' ' + unit, 1320, 468, 22, t.dim, { font: 'bold' });
 
-            G.frame(cv, t, ['Drive', 'Projection', 'Cameras'], page, [d.demo && { text: 'DEMO' }]);
+            G.frame(cv, t, ['Drive', 'Projection', 'Cameras', 'Cluster'], page, [d.demo && { text: 'DEMO' }]);
             G.button(cv, t, 500, 64, 150, 40, 'Reset trip', reset, { key: 'reset', confirm: true });
         }
 
@@ -202,7 +207,28 @@ mgu.run({
                     return render();
                 }, { key: 'p' + item.id, primary: item.id === view.id });
             });
-            G.frame(cv, t, ['Drive', 'Projection', 'Cameras'], page, [d.demo && { text: 'DEMO' }]);
+            G.frame(cv, t, ['Drive', 'Projection', 'Cameras', 'Cluster'], page, [d.demo && { text: 'DEMO' }]);
+        }
+
+        function drawClusterPage(cv, t, d) {
+            const id = ctx.settings.get('clusterStyle') || 'off';
+            const view = look(d);
+            const s = snapOf(d);
+            if (id === 'off') {
+                cv.roundRect(24, 64, 1552, 250, 16, '#101318');
+                cv.text('Stock cluster', 48, 160, 42, t.text, { font: 'bold' });
+                cv.text('Pick M2 or M3 to cover the dials.', 48, 210, 22, t.dim, { font: 'label' });
+            } else {
+                drawCluster(cv, { nx: 24, ny: 64, nw: 1552, nh: 250 }, id, s, view);
+            }
+            cv.text(cluster.status(), 48, 340, 16, t.dim, { font: 'label' });
+            CLUSTERS.forEach((item, i) => {
+                G.button(cv, t, 24 + i * 250, 370, 230, 52, item.name, () => {
+                    ctx.settings.set('clusterStyle', item.id);
+                    return render();
+                }, { key: 'c' + item.id, primary: item.id === id });
+            });
+            G.frame(cv, t, ['Drive', 'Projection', 'Cameras', 'Cluster'], page, [d.demo && { text: 'DEMO' }]);
         }
 
         function drawCams(cv, t, d, alert) {
@@ -220,7 +246,7 @@ mgu.run({
             cv.text('cameras', 960, 168, 28, t.dim, { font: 'bold' });
             cv.text(src, 848, 210, 28, t.dim, { font: 'bold' });
             cv.text(alert.on ? 'Beeping. Closer is faster.' : 'Beep starts at 300 m, for at least 5 s.', 848, 260, 22, t.dim, { font: 'label' });
-            G.frame(cv, t, ['Drive', 'Projection', 'Cameras'], page, [d.demo && { text: 'DEMO' }]);
+            G.frame(cv, t, ['Drive', 'Projection', 'Cameras', 'Cluster'], page, [d.demo && { text: 'DEMO' }]);
         }
 
         function drawBanner(cv, t, alert) {
@@ -232,6 +258,7 @@ mgu.run({
         }
 
         const hud = startHud(ctx.log, drawProjection);
+        const cluster = startCluster(ctx.log, drawCluster);
 
         async function render() {
             const t = ctx.theme();
@@ -240,11 +267,14 @@ mgu.run({
             const cv = ctx.canvas(W, H).clear(t.bg);
             if (page === 0) drawDrive(cv, t, d);
             else if (page === 1) drawPicker(cv, t, d);
-            else drawCams(cv, t, d, alert);
-            if (page !== 2) drawBanner(cv, t, alert);
+            else if (page === 2) drawCams(cv, t, d, alert);
+            else drawClusterPage(cv, t, d);
+            if (page !== 2 && page !== 3) drawBanner(cv, t, alert);
             const view = look(d);
             if (alert.on) view.cam = alert.dist + ' m';
-            hud.update(view, snapOf(d));
+            const snap = snapOf(d);
+            hud.update(view, snap);
+            cluster.update(ctx.settings.get('clusterStyle') || 'off', view, snap);
             await ui.image('MAIN_GFX', cv);
         }
 

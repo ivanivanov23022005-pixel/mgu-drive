@@ -97,4 +97,101 @@ function startHud(log, draw) {
     };
 }
 
-module.exports = { startHud };
+function panelOf(targets) {
+    const m = /(?:^|,)\s*panel:(\d+)x(\d+)/.exec(String(targets || ''));
+    const w = m ? Number(m[1]) : 1920;
+    const h = m ? Number(m[2]) : 720;
+    return {
+        w: w,
+        h: h,
+        iw: Math.max(320, Math.min(960, w)),
+        ih: Math.max(120, Math.min(360, h)),
+    };
+}
+
+function startCluster(log, draw) {
+    const state = { live: false, note: 'Cluster: install Cluster renderer' };
+    if (!ClusterRender) return { update() {}, status: () => state.note };
+
+    let cr = null;
+    let layer = 0;
+    let scene = panelOf('');
+    let shown = false;
+    let last = '';
+
+    function paint(id, look, snap) {
+        if (!layer || !cr) return;
+        const cv = new Canvas(scene.iw, scene.ih);
+        draw(cv, { nx: 0, ny: 0, nw: scene.iw, nh: scene.ih }, id, snap, look);
+        cr.pixels(layer, null, Buffer.from(cv.d.buffer, cv.d.byteOffset, cv.d.length));
+    }
+
+    function arm(id) {
+        if (!cr || !cr.ready) return;
+        if (!layer) {
+            scene = panelOf(cr.targets);
+            layer = cr.image({
+                target: 'panel',
+                klass: 'overlay',
+                z: 0,
+                x: 0,
+                y: 0,
+                w: scene.w,
+                h: scene.h,
+                iw: scene.iw,
+                ih: scene.ih,
+                fps: 10,
+                sampling: 'bilinear',
+            });
+        }
+        if (!layer) {
+            state.live = false;
+            state.note = 'Cluster: dials refused';
+            return;
+        }
+        const on = id === 'm2' || id === 'm3';
+        if (on !== shown) {
+            cr.set(layer, { visible: on });
+            shown = on;
+        }
+        state.live = on;
+        state.note = on ? 'Cluster: on the dials' : 'Cluster: stock dials';
+    }
+
+    try {
+        cr = new ClusterRender('c365_drive_cluster');
+        cr.on('ready', () => {
+            shown = false;
+            last = '';
+        });
+        cr.on('disconnected', () => {
+            layer = 0;
+            shown = false;
+            state.live = false;
+            state.note = 'Cluster: Cluster renderer stopped';
+        });
+        cr.connect();
+    } catch (e) {
+        state.note = 'Cluster: ' + e.message;
+        if (log) log.warn('cluster: ' + e.message);
+    }
+
+    return {
+        update(id, look, snap) {
+            const on = id === 'm2' || id === 'm3';
+            if (!cr || !cr.ready) {
+                state.note = on ? 'Cluster: install Cluster renderer' : 'Cluster: stock dials';
+                return;
+            }
+            try { arm(id); } catch (e) { if (log) log.warn('cluster: ' + e.message); return; }
+            if (!on || !layer) return;
+            const key = [id, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, snap.rpm, snap.unit].join('|');
+            if (key === last) return;
+            last = key;
+            try { paint(id, look, snap); } catch (e) { if (log) log.warn('cluster paint: ' + e.message); }
+        },
+        status() { return state.note; },
+    };
+}
+
+module.exports = { startHud, startCluster };

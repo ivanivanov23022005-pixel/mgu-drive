@@ -2,7 +2,7 @@
   "id": "c365_drive",
   "title": "Drive",
   "description": "Speed, gear, oil and coolant, and the trip since you opened the app",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "vendor": "custom",
   "loggingId": "C365",
   "iconGlyph": "gauge",
@@ -68,6 +68,8 @@
     {"key": "projRedline", "label": "Redline", "type": "number", "default": 7000, "unit": "rpm",
      "steps": [5500, 6000, 6500, 7000, 7500, 8000]},
     {"key": "projFlash", "label": "Flash at redline", "type": "bool", "default": true},
+    {"key": "clusterStyle", "label": "Cluster", "type": "choice", "default": "off",
+     "options": [["off", "Stock"], ["m2", "M2"], ["m3", "M3"]]},
     {"key": "camAlert", "label": "Camera beep", "type": "bool", "default": true},
     {"key": "camTest", "label": "Camera test", "type": "choice", "default": "off",
      "options": [["off", "Off"], ["approach", "Drive toward a camera"]]}
