@@ -8,7 +8,7 @@
 
 1. Выложи этот репозиторий на GitHub, публичным.
 2. В машине: **Store → Settings → Add source**.
-3. Введи `Electro-20/mgu-drive`.
+3. Введи `ivanivanov23022005-pixel/mgu-drive`.
 4. Канал: ветка **main**.
 5. **Drive → Install**.
 6. На iDrive 8 перезапусти голову один раз. Плитка появляется после перезапуска.
