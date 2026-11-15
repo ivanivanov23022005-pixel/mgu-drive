@@ -217,7 +217,7 @@ mgu.run({
             if (id === 'off') {
                 cv.roundRect(24, 64, 1552, 250, 16, '#101318');
                 cv.text('Stock cluster', 48, 160, 42, t.text, { font: 'bold' });
-                cv.text('Pick M2 or M3 to cover the dials.', 48, 210, 22, t.dim, { font: 'label' });
+                cv.text('M2 or M3 replace the map in the middle. Side gauges stay.', 48, 210, 22, t.dim, { font: 'label' });
             } else {
                 drawCluster(cv, { nx: 24, ny: 64, nw: 1552, nh: 250 }, id, s, view);
             }

@@ -97,15 +97,42 @@ function startHud(log, draw) {
     };
 }
 
-function panelOf(targets) {
-    const m = /(?:^|,)\s*panel:(\d+)x(\d+)/.exec(String(targets || ''));
-    const w = m ? Number(m[1]) : 1920;
-    const h = m ? Number(m[2]) : 720;
+function sizeOf(targets, name) {
+    const m = new RegExp('(?:^|,)\\s*' + name + ':(\\d+)x(\\d+)').exec(String(targets || ''));
+    return m ? { w: Number(m[1]), h: Number(m[2]) } : null;
+}
+
+/* iDrive 8 has no panel. The cluster middle (where the map sits) is popup,
+ * and the side gauges stay the car's. iDrive 7 still has the whole panel. */
+function sceneOfCluster(targets) {
+    const list = String(targets || '');
+    if (sizeOf(list, 'popup') || sizeOf(list, 'widget')) {
+        const scene = sizeOf(list, 'popup') || sizeOf(list, 'widget');
+        const iw = 960;
+        const ih = 450;
+        return {
+            target: sizeOf(list, 'popup') ? 'popup' : 'widget',
+            klass: 'content',
+            x: 400,
+            y: 140,
+            w: Math.min(1320, scene.w - 400),
+            h: Math.min(620, scene.h - 140),
+            iw: iw,
+            ih: ih,
+            note: 'Cluster: middle of the dials',
+        };
+    }
+    const scene = sizeOf(list, 'panel') || { w: 1920, h: 720 };
     return {
-        w: w,
-        h: h,
-        iw: Math.max(320, Math.min(960, w)),
-        ih: Math.max(120, Math.min(360, h)),
+        target: 'panel',
+        klass: 'overlay',
+        x: 0,
+        y: 0,
+        w: scene.w,
+        h: scene.h,
+        iw: Math.max(320, Math.min(960, scene.w)),
+        ih: Math.max(120, Math.min(360, scene.h)),
+        note: 'Cluster: on the dials',
     };
 }
 
@@ -115,7 +142,7 @@ function startCluster(log, draw) {
 
     let cr = null;
     let layer = 0;
-    let scene = panelOf('');
+    let scene = sceneOfCluster('');
     let shown = false;
     let last = '';
 
@@ -129,18 +156,23 @@ function startCluster(log, draw) {
     function arm(id) {
         if (!cr || !cr.ready) return;
         if (!layer) {
-            scene = panelOf(cr.targets);
+            scene = sceneOfCluster(cr.targets);
+            if (!sizeOf(cr.targets, scene.target)) {
+                state.live = false;
+                state.note = 'Cluster: dials refused';
+                return;
+            }
             layer = cr.image({
-                target: 'panel',
-                klass: 'overlay',
+                target: scene.target,
+                klass: scene.klass,
                 z: 0,
-                x: 0,
-                y: 0,
+                x: scene.x,
+                y: scene.y,
                 w: scene.w,
                 h: scene.h,
                 iw: scene.iw,
                 ih: scene.ih,
-                fps: 10,
+                fps: 8,
                 sampling: 'bilinear',
             });
         }
@@ -155,7 +187,7 @@ function startCluster(log, draw) {
             shown = on;
         }
         state.live = on;
-        state.note = on ? 'Cluster: on the dials' : 'Cluster: stock dials';
+        state.note = on ? scene.note : 'Cluster: stock dials';
     }
 
     try {
@@ -185,7 +217,8 @@ function startCluster(log, draw) {
             }
             try { arm(id); } catch (e) { if (log) log.warn('cluster: ' + e.message); return; }
             if (!on || !layer) return;
-            const key = [id, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, snap.rpm, snap.unit].join('|');
+            const rpmStep = Math.round((snap.rpmN || 0) / 50);
+            const key = [id, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit].join('|');
             if (key === last) return;
             last = key;
             try { paint(id, look, snap); } catch (e) { if (log) log.warn('cluster paint: ' + e.message); }
