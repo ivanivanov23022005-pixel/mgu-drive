@@ -181,7 +181,7 @@ function startCluster(log, draw) {
             state.note = 'Cluster: dials refused';
             return;
         }
-        const on = id === 'm2' || id === 'm3';
+        const on = id && id !== 'off';
         if (on !== shown) {
             cr.set(layer, { visible: on });
             shown = on;
@@ -210,7 +210,7 @@ function startCluster(log, draw) {
 
     return {
         update(id, look, snap) {
-            const on = id === 'm2' || id === 'm3';
+            const on = id && id !== 'off';
             if (!cr || !cr.ready) {
                 state.note = on ? 'Cluster: install Cluster renderer' : 'Cluster: stock dials';
                 return;
@@ -218,7 +218,8 @@ function startCluster(log, draw) {
             try { arm(id); } catch (e) { if (log) log.warn('cluster: ' + e.message); return; }
             if (!on || !layer) return;
             const rpmStep = Math.round((snap.rpmN || 0) / 50);
-            const key = [id, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit].join('|');
+            const frame = Math.floor(Date.now() / 140);
+            const key = [id, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit, frame].join('|');
             if (key === last) return;
             last = key;
             try { paint(id, look, snap); } catch (e) { if (log) log.warn('cluster paint: ' + e.message); }

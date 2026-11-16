@@ -56,6 +56,17 @@ mgu.run({
             lastKmh = 0;
         });
 
+        const OCTANE = ['95', '98', '100', '102'];
+        const octane = () => {
+            const v = String(ctx.settings.get('octane') || '98');
+            return OCTANE.indexOf(v) >= 0 ? v : '98';
+        };
+        function nextOctane() {
+            const i = OCTANE.indexOf(octane());
+            ctx.settings.set('octane', OCTANE[(i + 1) % OCTANE.length]);
+            return render();
+        }
+
         const mph = () => ctx.settings.get('speedUnit') === 'mph';
         const speedOf = (kmh) => (mph() ? kmh / MPH : kmh);
         const distOf = (m) => (mph() ? (m / 1000) / MPH : m / 1000);
@@ -121,6 +132,10 @@ mgu.run({
                 rpm: G.isNum(d.rpm) ? String(Math.round(d.rpm)) : '--',
                 rpmN: G.isNum(d.rpm) ? d.rpm : 0,
                 speedN: spd === null ? 0 : spd,
+                kmh: G.isNum(d.speed) ? d.speed : 0,
+                coolant: G.isNum(d.coolant) ? String(Math.round(d.coolant)) : '--',
+                oil: G.isNum(d.oil) ? String(Math.round(d.oil)) : '--',
+                trip: (metres / 1000).toFixed(1),
             };
         }
 
@@ -136,7 +151,6 @@ mgu.run({
                 decimals: 0,
                 unit: unit,
                 size: 120,
-                sub: rpm === null ? '' : rpm + ' rpm',
             });
             G.button(cv, t, 48, 268, 220, 56, 'Projection', () => {
                 page = 1;
@@ -147,7 +161,9 @@ mgu.run({
                 return render();
             }, { key: 'open-cluster' });
             cv.text(look(d).name, 48, 348, 22, t.dim, { font: 'bold', spacing: 1 });
-            cv.text(hud.status(), 48, 378, 16, t.dim, { font: 'label' });
+            cv.text(hud.status(), 48, 376, 16, t.dim, { font: 'label' });
+            cv.text(rpm === null ? '' : rpm + ' rpm', 360, 376, 16, t.dim, { font: 'label' });
+            G.button(cv, t, 48, 400, 300, 52, 'Octane ' + octane(), nextOctane, { key: 'octane', primary: true });
 
             G.panel(cv, t, 744, 44, 360, 468, 'Gear');
             G.gear(cv, t, 924, 340, {
@@ -214,16 +230,29 @@ mgu.run({
             const id = ctx.settings.get('clusterStyle') || 'off';
             const view = look(d);
             const s = snapOf(d);
+            const big = id === 'fdial';
+            const wide = id === 'm5x' || id === 'amgs' || id === 'bmwr' || id === 'm2x' || id === 'wing' || id === 'split' || id === 'pods' || id === 'night' || id === 'amgc';
             if (id === 'off') {
-                cv.roundRect(24, 64, 1552, 250, 16, '#101318');
-                cv.text('Stock cluster', 48, 160, 42, t.text, { font: 'bold' });
-                cv.text('M2 or M3 replace the map in the middle. Side gauges stay.', 48, 210, 22, t.dim, { font: 'label' });
+                cv.fillRect(24, 42, 1552, 248, '#101318');
+                cv.text('Stock cluster', 48, 140, 36, t.text, { font: 'bold' });
+                cv.text('A style replaces the map in the middle. Side gauges stay.', 48, 186, 20, t.dim, { font: 'label' });
+            } else if (big) {
+                drawCluster(cv, { nx: 615, ny: 2, nw: 372, nh: 372 }, id, s, view);
+            } else if (wide) {
+                drawCluster(cv, { nx: 0, ny: 34, nw: 1600, nh: 372 }, id, s, view);
             } else {
-                drawCluster(cv, { nx: 24, ny: 64, nw: 1552, nh: 250 }, id, s, view);
+                drawCluster(cv, { nx: 24, ny: 42, nw: 1552, nh: 248 }, id, s, view);
             }
-            cv.text(cluster.status(), 48, 340, 16, t.dim, { font: 'label' });
+            if (!wide) cv.text(cluster.status(), 24, big ? 24 : 308, 14, t.dim, { font: 'label' });
+            const cols = wide ? 8 : 7;
+            const bw = wide ? 188 : 210;
+            const bh = wide ? 22 : big ? 26 : 32;
+            const gap = wide ? 4 : big ? 5 : 8;
+            const y0 = big ? 378 : wide ? 412 : 324;
             CLUSTERS.forEach((item, i) => {
-                G.button(cv, t, 24 + i * 250, 370, 230, 52, item.name, () => {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                G.button(cv, t, 24 + col * (bw + gap), y0 + row * (bh + gap), bw, bh, item.name, () => {
                     ctx.settings.set('clusterStyle', item.id);
                     return render();
                 }, { key: 'c' + item.id, primary: item.id === id });
