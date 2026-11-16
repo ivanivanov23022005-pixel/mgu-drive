@@ -20,13 +20,14 @@ function sceneOf(targets) {
 
 function startHud(log, draw) {
     const state = { live: false, note: 'Glass: install Cluster renderer' };
-    if (!ClusterRender) return { update() {}, status: () => state.note };
+    if (!ClusterRender) return { hold() {}, update() {}, status: () => state.note };
 
     let cr = null;
     let layer = 0;
     let scene = sceneOf('');
     let claim = null;
     let last = '';
+    let paused = false;
     try { claim = new HudClaim('c365_drive', log); } catch (e) { /* claim file unavailable */ }
 
     function paint(style, snap) {
@@ -85,8 +86,25 @@ function startHud(log, draw) {
     }
 
     return {
+        hold(on) {
+            paused = !on;
+            if (on) {
+                if (cr && cr.ready && !layer) {
+                    try { arm(); } catch (e) { if (log) log.warn('hud: ' + e.message); }
+                }
+                return;
+            }
+            if (layer && cr) {
+                try { cr.drop(layer); } catch (e) { /* renderer already gone */ }
+            }
+            layer = 0;
+            last = '';
+            state.live = false;
+            state.note = 'Glass: paused';
+            if (claim) claim.hold(false);
+        },
         update(style, snap) {
-            if (!layer) return;
+            if (paused || !layer) return;
             const beat = style.ask >= 3 ? Math.floor(Date.now() / 160) : 0;
             const key = [style.ask || 0, beat, style.id, style.accent, style.text, style.red, style.font, style.size, style.height,
                 style.redline, style.blink ? 1 : 0, style.cam || '', snap.speed, snap.gear, snap.rpm].join('|');
@@ -139,13 +157,14 @@ function sceneOfCluster(targets) {
 
 function startCluster(log, draw) {
     const state = { live: false, note: 'Cluster: install Cluster renderer' };
-    if (!ClusterRender) return { update() {}, status: () => state.note };
+    if (!ClusterRender) return { hold() {}, update() {}, status: () => state.note };
 
     let cr = null;
     let layer = 0;
     let scene = sceneOfCluster('');
     let shown = false;
     let last = '';
+    let paused = false;
 
     function paint(id, look, snap) {
         if (!layer || !cr) return;
@@ -210,7 +229,20 @@ function startCluster(log, draw) {
     }
 
     return {
+        hold(on) {
+            paused = !on;
+            if (on) return;
+            if (layer && cr) {
+                try { cr.drop(layer); } catch (e) { /* renderer already gone */ }
+            }
+            layer = 0;
+            shown = false;
+            last = '';
+            state.live = false;
+            state.note = 'Cluster: paused';
+        },
         update(id, look, snap) {
+            if (paused) return;
             const on = id && id !== 'off';
             if (!cr || !cr.ready) {
                 state.note = on ? 'Cluster: install Cluster renderer' : 'Cluster: stock dials';
@@ -220,7 +252,7 @@ function startCluster(log, draw) {
             if (!on || !layer) return;
             const rpmStep = Math.round((snap.rpmN || 0) / 50);
             const frame = Math.floor(Date.now() / 140);
-            const key = [id, look.ask || 0, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit, frame].join('|');
+            const key = [id, look.ask || 0, look.shift || 0, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit, frame].join('|');
             if (key === last) return;
             last = key;
             try { paint(id, look, snap); } catch (e) { if (log) log.warn('cluster paint: ' + e.message); }

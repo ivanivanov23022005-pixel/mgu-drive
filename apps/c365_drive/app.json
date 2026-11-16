@@ -2,7 +2,7 @@
   "id": "c365_drive",
   "title": "Drive",
   "description": "Speed, gear, oil and coolant, and the trip since you opened the app",
-  "version": "1.9.0",
+  "version": "1.9.2",
   "vendor": "custom",
   "loggingId": "C365",
   "iconGlyph": "gauge",

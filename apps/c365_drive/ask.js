@@ -43,19 +43,21 @@ function fit(cv, text, maxW, maxSize) {
     return size;
 }
 
-function cluster(cv, area, phase) {
+function cluster(cv, area, phase, shift) {
     const x = area.nx;
     const y = area.ny;
     const w = area.nw;
     const h = area.nh;
-    const cx = x + w / 2;
+    const slide = Math.max(0, Math.min(w * 0.42, Number(shift) || 0));
+    const span = w - slide;
+    const cx = x + slide + span / 2;
     cv.fillRect(x, y, w, h, NIGHT);
     cv.strokeRoundRect(x + 10, y + 10, w - 20, h - 20, 16, 2, GOLD);
     const pulse = 0.9 + 0.1 * Math.sin(Date.now() / 320);
     heart(cv, cx, y + h * 0.22, Math.min(w, h) * 0.08 * pulse, ROSE);
     if (phase < 3) {
         cv.text('Настя', cx, y + h * 0.44, Math.min(64, h * 0.16), GOLD, { align: 'center', font: 'label', literal: true });
-        const lines = wrap(cv, 'у нас с Димой к тебе есть предложение. Если ты готова его посмотреть, нажми OK ещё раз', Math.min(30, h * 0.075), w * 0.86);
+        const lines = wrap(cv, 'у нас с Димой к тебе есть предложение. Если ты готова его посмотреть, нажми OK ещё раз', Math.min(30, h * 0.075), span * 0.9);
         const size = Math.min(30, h * 0.075);
         const top = y + h * 0.58;
         for (let i = 0; i < lines.length; i++) {
@@ -64,7 +66,7 @@ function cluster(cv, area, phase) {
         return;
     }
     const line = 'Посмотри на проекцию';
-    const size = fit(cv, line, w * 0.88, Math.min(52, h * 0.16));
+    const size = fit(cv, line, span * 0.9, Math.min(52, h * 0.16));
     cv.text(line, cx, y + h * 0.58, size, INK, { align: 'center', font: 'label', literal: true });
     const ay = y + h * 0.78;
     cv.line(cx, ay + 18, cx, ay - 16, 3, GOLD);

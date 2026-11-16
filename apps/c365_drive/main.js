@@ -83,6 +83,13 @@ mgu.run({
 
         let page = 0;
         let vow = 0;
+        let askShift = Number(ctx.settings.get('askShift')) || 0;
+        function nudgeAsk() {
+            askShift += 70;
+            if (askShift > 280) askShift = 0;
+            ctx.settings.set('askShift', String(askShift));
+            return render();
+        }
 
         function look(d) {
             const g = ctx.settings;
@@ -315,11 +322,13 @@ mgu.run({
                     vow = 3;
                     return render();
                 }, { key: 'vow-ok2', primary: true, color: '#c45b74' });
+                G.button(cv, t, 660, 400, 280, 52, 'Вправо', nudgeAsk, { key: 'vow-right', color: '#e8c27a' });
                 return;
             }
             const glassOn = hud.status().indexOf('on the projection') >= 0;
             if (!glassOn) ask.glass(cv, { nx: 280, ny: 70, nw: 1040, nh: 220 });
             else cv.text('Посмотри на проекцию', 800, 200, 36, '#fff6ea', { align: 'center', font: 'label', literal: true });
+            G.button(cv, t, 1040, 400, 240, 48, 'Вправо', nudgeAsk, { key: 'vow-right', color: '#e8c27a' });
             G.button(cv, t, 680, 400, 240, 48, 'Закрыть', () => {
                 vow = 0;
                 return render();
@@ -332,12 +341,19 @@ mgu.run({
         }
 
         function paintCluster(cv, area, id, snap, look) {
-            if (look.ask >= 2) return ask.cluster(cv, area, look.ask);
+            if (look.ask >= 2) return ask.cluster(cv, area, look.ask, look.shift);
             drawCluster(cv, area, id, snap, look);
         }
 
         const hud = startHud(ctx.log, paintHud);
         const cluster = startCluster(ctx.log, paintCluster);
+        if (ctx.ui && ctx.ui.onVisible) {
+            ctx.ui.onVisible((name, v) => {
+                if (name !== 'MAIN') return;
+                hud.hold(!!v);
+                cluster.hold(!!v);
+            });
+        }
 
         async function render() {
             const t = ctx.theme();
@@ -352,6 +368,7 @@ mgu.run({
             if (!vow && page !== 2 && page !== 3) drawBanner(cv, t, alert);
             const view = look(d);
             view.ask = vow;
+            view.shift = askShift;
             if (alert.on) view.cam = alert.dist + ' m';
             const snap = snapOf(d);
             hud.update(view, snap);
