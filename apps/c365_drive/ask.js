@@ -56,9 +56,15 @@ function cluster(cv, area, phase, shift) {
     const pulse = 0.9 + 0.1 * Math.sin(Date.now() / 320);
     heart(cv, cx, y + h * 0.22, Math.min(w, h) * 0.08 * pulse, ROSE);
     if (phase < 3) {
-        cv.text('Настя', cx, y + h * 0.44, Math.min(64, h * 0.16), GOLD, { align: 'center', font: 'label', literal: true });
-        const lines = wrap(cv, 'у нас с Димой к тебе есть предложение. Если ты готова его посмотреть, нажми OK ещё раз', Math.min(30, h * 0.075), span * 0.9);
-        const size = Math.min(30, h * 0.075);
+        const hello = 'Привет, Кисун';
+        const helloSize = fit(cv, hello, span * 0.9, Math.min(52, h * 0.14));
+        cv.text(hello, cx, y + h * 0.42, helloSize, GOLD, { align: 'center', font: 'label', literal: true });
+        const lines = [
+            'Это я, твой Кисун) У меня к тебе есть вопрос)',
+            'Чтобы я мог тебе его задать, нажми OK на мониторе)',
+        ];
+        let size = Math.min(28, h * 0.07);
+        for (let n = 0; n < lines.length; n++) size = Math.min(size, fit(cv, lines[n], span * 0.92, size));
         const top = y + h * 0.58;
         for (let i = 0; i < lines.length; i++) {
             cv.text(lines[i], cx, top + i * (size + 10), size, INK, { align: 'center', font: 'label', literal: true });
@@ -82,11 +88,15 @@ function glass(cv, area) {
     const cx = x + w / 2;
     const pulse = 0.88 + 0.12 * Math.sin(Date.now() / 260);
     const glow = 0.35 + 0.25 * Math.sin(Date.now() / 260);
-    heart(cv, cx, y + h * 0.34, Math.min(w, h) * 0.2 * pulse, withAlpha(ROSE, glow));
-    heart(cv, cx, y + h * 0.34, Math.min(w, h) * 0.15 * pulse, ROSE);
-    const line = 'Будь моей женой';
-    const size = fit(cv, line, w * 0.92, Math.min(36, h * 0.22));
-    cv.text(line, cx, y + h * 0.78, size, INK, { align: 'center', font: 'label', literal: true });
+    heart(cv, cx, y + h * 0.26, Math.min(w, h) * 0.16 * pulse, withAlpha(ROSE, glow));
+    heart(cv, cx, y + h * 0.26, Math.min(w, h) * 0.12 * pulse, ROSE);
+    const lines = ['Я тебя люблю.', 'Ты станешь моей женой?'];
+    let size = Math.min(32, h * 0.18);
+    for (let i = 0; i < lines.length; i++) size = Math.min(size, fit(cv, lines[i], w * 0.94, size));
+    const top = y + h * 0.62;
+    for (let i = 0; i < lines.length; i++) {
+        cv.text(lines[i], cx, top + i * (size + 6), size, INK, { align: 'center', font: 'label', literal: true });
+    }
 }
 
 module.exports = { cluster: cluster, glass: glass };
