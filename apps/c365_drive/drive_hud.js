@@ -87,7 +87,8 @@ function startHud(log, draw) {
     return {
         update(style, snap) {
             if (!layer) return;
-            const key = [style.id, style.accent, style.text, style.red, style.font, style.size, style.height,
+            const beat = style.ask >= 3 ? Math.floor(Date.now() / 160) : 0;
+            const key = [style.ask || 0, beat, style.id, style.accent, style.text, style.red, style.font, style.size, style.height,
                 style.redline, style.blink ? 1 : 0, style.cam || '', snap.speed, snap.gear, snap.rpm].join('|');
             if (key === last) return;
             last = key;
@@ -219,7 +220,7 @@ function startCluster(log, draw) {
             if (!on || !layer) return;
             const rpmStep = Math.round((snap.rpmN || 0) / 50);
             const frame = Math.floor(Date.now() / 140);
-            const key = [id, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit, frame].join('|');
+            const key = [id, look.ask || 0, scene.target, look.redline, look.blink ? 1 : 0, snap.speed, snap.gear, rpmStep, snap.unit, frame].join('|');
             if (key === last) return;
             last = key;
             try { paint(id, look, snap); } catch (e) { if (log) log.warn('cluster paint: ' + e.message); }

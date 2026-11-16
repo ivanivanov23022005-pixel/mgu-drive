@@ -10,6 +10,7 @@ const Car = require('./kit/car');
 const { startHud, startCluster } = require('./drive_hud');
 const { STYLES, drawProjection } = require('./proj');
 const { STYLES: CLUSTERS, drawCluster } = require('./cluster');
+const ask = require('./ask');
 const radar = require('./radar');
 const { startGps } = require('./gps');
 
@@ -81,6 +82,7 @@ mgu.run({
         }
 
         let page = 0;
+        let vow = 0;
 
         function look(d) {
             const g = ctx.settings;
@@ -163,7 +165,11 @@ mgu.run({
             cv.text(look(d).name, 48, 348, 22, t.dim, { font: 'bold', spacing: 1 });
             cv.text(hud.status(), 48, 376, 16, t.dim, { font: 'label' });
             cv.text(rpm === null ? '' : rpm + ' rpm', 360, 376, 16, t.dim, { font: 'label' });
-            G.button(cv, t, 48, 400, 300, 52, 'Octane ' + octane(), nextOctane, { key: 'octane', primary: true });
+            G.button(cv, t, 48, 400, 220, 52, 'Octane ' + octane(), nextOctane, { key: 'octane', primary: true });
+            G.button(cv, t, 284, 400, 180, 52, 'Настя', () => {
+                vow = 1;
+                return render();
+            }, { key: 'nastya', color: '#c45b74' });
 
             G.panel(cv, t, 744, 44, 360, 468, 'Gear');
             G.gear(cv, t, 924, 340, {
@@ -286,24 +292,70 @@ mgu.run({
             cv.text(alert.kind === 'light' ? 'red light' : 'speed', 520, 486, 24, '#ffd0d0', { font: 'bold' });
         }
 
-        const hud = startHud(ctx.log, drawProjection);
-        const cluster = startCluster(ctx.log, drawCluster);
+        function drawVow(cv, t) {
+            cv.fillRect(0, 0, W, H, '#14080d');
+            cv.strokeRoundRect(28, 28, W - 56, H - 56, 18, 2, '#e8c27a');
+            if (vow < 2) {
+                cv.text('Настя', 800, 160, 48, '#e8c27a', { align: 'center', font: 'label', literal: true });
+                cv.text('Нажми OK', 800, 230, 28, '#fff6ea', { align: 'center', font: 'label', literal: true });
+                G.button(cv, t, 560, 280, 480, 88, 'OK', () => {
+                    vow = 2;
+                    return render();
+                }, { key: 'vow-ok', primary: true, color: '#c45b74' });
+                G.button(cv, t, 680, 400, 240, 48, 'Не сейчас', () => {
+                    vow = 0;
+                    return render();
+                }, { key: 'vow-no' });
+                return;
+            }
+            if (vow < 3) {
+                cv.text('Смотри на приборку', 800, 180, 36, '#fff6ea', { align: 'center', font: 'label', literal: true });
+                cv.text('Там просят нажать OK ещё раз', 800, 230, 24, '#e8c27a', { align: 'center', font: 'label', literal: true });
+                G.button(cv, t, 560, 290, 480, 88, 'OK', () => {
+                    vow = 3;
+                    return render();
+                }, { key: 'vow-ok2', primary: true, color: '#c45b74' });
+                return;
+            }
+            const glassOn = hud.status().indexOf('on the projection') >= 0;
+            if (!glassOn) ask.glass(cv, { nx: 280, ny: 70, nw: 1040, nh: 220 });
+            else cv.text('Посмотри на проекцию', 800, 200, 36, '#fff6ea', { align: 'center', font: 'label', literal: true });
+            G.button(cv, t, 680, 400, 240, 48, 'Закрыть', () => {
+                vow = 0;
+                return render();
+            }, { key: 'vow-close' });
+        }
+
+        function paintHud(cv, area, style, snap, glass) {
+            if (style.ask >= 3) return ask.glass(cv, area);
+            drawProjection(cv, area, style, snap, glass);
+        }
+
+        function paintCluster(cv, area, id, snap, look) {
+            if (look.ask >= 2) return ask.cluster(cv, area, look.ask);
+            drawCluster(cv, area, id, snap, look);
+        }
+
+        const hud = startHud(ctx.log, paintHud);
+        const cluster = startCluster(ctx.log, paintCluster);
 
         async function render() {
             const t = ctx.theme();
             const d = car.data();
             const alert = alertOf(d);
             const cv = ctx.canvas(W, H).clear(t.bg);
-            if (page === 0) drawDrive(cv, t, d);
+            if (vow) drawVow(cv, t);
+            else if (page === 0) drawDrive(cv, t, d);
             else if (page === 1) drawPicker(cv, t, d);
             else if (page === 2) drawCams(cv, t, d, alert);
             else drawClusterPage(cv, t, d);
-            if (page !== 2 && page !== 3) drawBanner(cv, t, alert);
+            if (!vow && page !== 2 && page !== 3) drawBanner(cv, t, alert);
             const view = look(d);
+            view.ask = vow;
             if (alert.on) view.cam = alert.dist + ' m';
             const snap = snapOf(d);
             hud.update(view, snap);
-            cluster.update(ctx.settings.get('clusterStyle') || 'off', view, snap);
+            cluster.update(vow >= 2 ? 'ask' : (ctx.settings.get('clusterStyle') || 'off'), view, snap);
             await ui.image('MAIN_GFX', cv);
         }
 
